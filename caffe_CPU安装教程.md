@@ -25,8 +25,8 @@ cp Makefile.config.example Makefile.config
 
 2.配置Makefile.config
 
-1)CPU_ONLY := 1
-
+1)CPU_ONLY := 1 或
+USE_CUDNN := 1
 2)配置一些引用文件（增加部分主要是解决新版本下，HDF5的路径问题）
 
 1)INCLUDE_DIRS := $(PYTHON_INCLUDE) 
@@ -67,20 +67,21 @@ build/lib/libcaffe.a(image_io.o): In function caffe::ReadVideoToVolumeDatum(char
 image_io.cpp:(.text+0x1abe): undefined reference to cv::VideoCapture::open(cv::String const&)' image_io.cpp:(.text+0x1ace): undefined reference tocv::VideoCapture::isOpened() const'
 
 adding ：
-
-opencv_videoio 
+LIBRARIES += glog gflags protobuf leveldb snappy \
+lmdb boost_system hdf5_hl hdf5 m \
+opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs opencv_videoio 
 
 to LIBRARIES in the Makefile
  
 3.Make Caffe
 
 低配置
-make all
+make
 make test
 make runtest
 
 高配置
-make all -j4
+make -j4
 make test -j4
 make runtest -j4
 
@@ -93,11 +94,25 @@ $ pkg-config --modversion opencv
 把opencv需要的lib添加到Makefile文件中，找到LIBRARIES（在PYTHON_LIBRARIES := boost_python python2.7 前一行）并修改为：
 LIBRARIES += glog gflags protobuf leveldb snappy lmdb boost_system hdf5_hl hdf5 m opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs
 
-缺少caffe.pb.c, caffe.pb.h
+缺少caffe.pb.cc, caffe.pb.h
 用protoc从caffe/src/caffe/proto/caffe.proto生成caffe.pb.h和caffe.pb.cc
 $ protoc src/caffe/proto/caffe.proto --cpp_out=.
 $ sudo mkdir include/caffe/proto
 $ sudo mv src/caffe/proto/caffe.pb.h include/caffe/proto
+
+如果在编译的过程中出现这样的问题：
+nvcc fatal   : Unsupported gpu architecture 'compute_60'
+需要手动修改caffe主目录下的Makefile.config文件
+CUDA_ARCH := -gencode arch=compute_30,code=sm_30 \
+		-gencode arch=compute_35,code=sm_35 \
+		-gencode arch=compute_50,code=sm_50 \
+		-gencode arch=compute_50,code=compute_50 \
+		-gencode arch=compute_52,code=sm_52 \
+		#-gencode arch=compute_60,code=sm_60 \
+		#-gencode arch=compute_61,code=sm_61
+我这里面把下面两行注释掉，再编译，就能通过了，这个可能和自己所用的哪款显卡有关系。
+#-gencode arch=compute_60,code=sm_60 \
+#-gencode arch=compute_61,code=sm_61
 
 4.编译成功，否则执行 make clean ，再次进行 make
 
