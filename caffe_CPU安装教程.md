@@ -73,6 +73,30 @@ opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs opencv_videoio
 
 to LIBRARIES in the Makefile
  
+打开之后修改如下内容：
+//若使用cudnn，则将# USE_CUDNN := 1 修改成： USE_CUDNN := 1 
+//若使用的opencv版本是3的，则将# OPENCV_VERSION := 3 修改为： OPENCV_VERSION := 3 
+//若要使用python来编写layer，则需要将# WITH_PYTHON_LAYER := 1 修改为 WITH_PYTHON_LAYER := 1 
+//重要的一项 将# Whatever else you find you need goes here.下面的 INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib 
+修改为： INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include /usr/include/hdf5/serial 
+      LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/hdf5/serial //这是因为ubuntu16.04的文件包含位置发生了变化，尤其是需要用到的hdf5的位置，所以需要更改这一路径
+
+打开makefile文件，
+
+将
+NVCCFLAGS +=-ccbin=$(CXX) -Xcompiler-fPIC $(COMMON_FLAGS)
+替换
+NVCCFLAGS += -D_FORCE_INLINES -ccbin=$(CXX) -Xcompiler -fPIC $(COMMON_FLAGS)
+
+
+编辑/usr/local/cuda/include/host_config.h，将其中的第115行注释掉：
+将
+
+#error-- unsupported GNU version! gcc versions later than 4.9 are not supported!
+
+改为
+//#error-- unsupported GNU version! gcc versions later than 4.9 are not supported!
+
 3.Make Caffe
 
 低配置
@@ -126,8 +150,7 @@ sudo apt-get install python-pip
 
 2)新建shell文件, 进入python 文件夹下 并执行安装依赖
 
-for req in $(cat requirements.txt); do pip install $req; done
-
+for req in $(cat requirements.txt); do sudo pip install $req; done
 
 3)在caffe_master目录下 编译python接口
 
