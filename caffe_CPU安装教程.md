@@ -81,12 +81,6 @@ to LIBRARIES in the Makefile
 修改为： INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include /usr/include/hdf5/serial 
       LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/hdf5/serial //这是因为ubuntu16.04的文件包含位置发生了变化，尤其是需要用到的hdf5的位置，所以需要更改这一路径
 
-打开makefile文件，
-
-将
-NVCCFLAGS +=-ccbin=$(CXX) -Xcompiler-fPIC $(COMMON_FLAGS)
-替换
-NVCCFLAGS += -D_FORCE_INLINES -ccbin=$(CXX) -Xcompiler -fPIC $(COMMON_FLAGS)
 
 
 编辑/usr/local/cuda/include/host_config.h，将其中的第115行注释掉：
@@ -115,8 +109,20 @@ make runtest -j4
 配置过了opencv的，可以这样查询安装版本：
 $ pkg-config --modversion opencv
 
+打开makefile文件，
+
+将
+NVCCFLAGS +=-ccbin=$(CXX) -Xcompiler-fPIC $(COMMON_FLAGS)
+替换
+NVCCFLAGS += -D_FORCE_INLINES -ccbin=$(CXX) -Xcompiler -fPIC $(COMMON_FLAGS)
+
 把opencv需要的lib添加到Makefile文件中，找到LIBRARIES（在PYTHON_LIBRARIES := boost_python python2.7 前一行）并修改为：
 LIBRARIES += glog gflags protobuf leveldb snappy lmdb boost_system hdf5_hl hdf5 m opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs
+
+将：
+LIBRARIES += glog gflags protobuf boost_system boost_filesystem m hdf5_hl hdf5
+改为：
+LIBRARIES += glog gflags protobuf boost_system boost_filesystem m hdf5_serial_hl hdf5_serial
 
 缺少caffe.pb.cc, caffe.pb.h
 用protoc从caffe/src/caffe/proto/caffe.proto生成caffe.pb.h和caffe.pb.cc
@@ -147,7 +153,6 @@ CUDA_ARCH := -gencode arch=compute_30,code=sm_30 \
 
 sudo apt-get install python-pip
 
-
 2)新建shell文件, 进入python 文件夹下 并执行安装依赖
 
 for req in $(cat requirements.txt); do sudo pip install $req; done
@@ -155,6 +160,18 @@ for req in $(cat requirements.txt); do sudo pip install $req; done
 3)在caffe_master目录下 编译python接口
 
 make pycaffe
+
+make distribute
+
+执行完后修改bashrc文件，
+sudo gedit ~/.bashrc
+添加
+
+PYTHONPATH=${HOME}/caffe/distribute/python:$PYTHONPATH
+
+LD_LIBRARY_PATH=${HOME}/caffe/build/lib:$LD_LIBRARY_PATH
+
+使得python能够找到caffe的依赖。
 
 
 当出现下面错误的时候修改
@@ -186,4 +203,56 @@ import caffe
 
 // If the last import caffe doesn't pop out any error, congratulations, now you can use python to play with caffe!
 '''
+错误1：
+
+File "<stdin>", line 1, in <module>   ImportError: No module named caffe
+
+    1
+
+解决方法：
+
+sudo echo export PYTHONPATH="~/your caffe path/python" >> ~/.bashrc
+
+source ~/.bashrc
+
+错误2：
+
+ImportError: No module named skimage.io
+
+
+解决方法：
+
+pip install -U scikit-image #若没有安装pip: sudo apt install python-pip
+
+ok，最后一步，配置notebook环境
+
+首先要安装python接口依赖库，在caffe根目录的python文件夹下，有一个requirements.txt的清单文件，上面列出了需要的依赖库，按照这个清单安装就可以了。
+
+在安装scipy库的时候，需要fortran编译器（gfortran)，如果没有这个编译器就会报错，因此，我们可以先安装一下。
+
+首先进入 caffe/python 目录下，执行安装代码：
+
+sudo apt-get install gfortran
+
+for req in $(cat requirements.txt); do sudo pip install $req; done
+
+安装完成以后执行：
+
+sudo pip install -r requirements.txt
+
+就会看到，安装成功的，都会显示Requirement already satisfied, 没有安装成功的，会继续安装。
+
+然后安装 jupyter ：
+
+sudo pip install jupyter
+
+安装完成后运行 notebook :
+
+jupyter notebook
+
+或
+
+ipython notebook
+如果成功则说明一切ok，否则检查路径从头再来，甚至需要重新编译python。
+
 
